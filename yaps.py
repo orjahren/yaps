@@ -1,4 +1,5 @@
 import pygame as pg
+import random
 
 # pylint: disable=no-name-in-module
 # TODO: Hva skjer med lintingen?
@@ -18,8 +19,13 @@ class Player:
     def __init__(self, surface):
         self.surface = surface
         self.pos = (40, 40)
+        self._tail = []
 
     def draw(self):
+        # Draw tail
+        for segment in self._tail:
+            pg.draw.circle(self.surface, (200, 200, 200), segment, 20)
+        # Draw head
         pg.draw.circle(self.surface, (255, 255, 255), self.pos, 40)
 
     def move(self, target):
@@ -27,6 +33,9 @@ class Player:
         y = (80 * (target[1] // 80)) + 40
 
         self.pos = (x, y)
+
+    def grow(self):
+        self._tail.append(self.pos)
 
 
 class Game:
@@ -40,6 +49,7 @@ class Game:
         self.surface = pg.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.loop = True
         self.player = Player(self.surface)
+        self._current_fruit = None, None
 
     def main(self):
         while self.loop:
@@ -48,6 +58,9 @@ class Game:
         # TODO: Hva skjer med lintingen?
         pg.quit()
         # pylint: enable=no-member
+
+    def spawn_fruit(self):
+        pass
 
     def grid_loop(self):
         self.surface.fill((0, 0, 0))
@@ -59,6 +72,20 @@ class Game:
                     (row * TILE_SIZE, col * TILE_SIZE, TILE_SIZE, TILE_SIZE),
                 )
         self.player.draw()
+
+        # Fruit logic
+        if self.player.pos == self._current_fruit:
+            self.player.grow()
+            self._current_fruit = None, None
+
+        if self._current_fruit == (None, None):
+            fruit_x = random.randint(0, TILES_HORIZONTAL - 1) * TILE_SIZE + 40
+            fruit_y = random.randint(0, TILES_VERTICAL - 1) * TILE_SIZE + 40
+            self._current_fruit = (fruit_x, fruit_y)
+
+        pg.draw.circle(self.surface, (255, 0, 0), self._current_fruit, 20)
+
+        # Event handling
 
         for event in pg.event.get():
             if event.type == QUIT:
