@@ -1,6 +1,9 @@
 import pygame as pg
 
-from pygame.event import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE
+# pylint: disable=no-name-in-module
+# TODO: Hva skjer med lintingen?
+from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE, K_LEFT, K_RIGHT, K_UP, K_DOWN, K_SPACE
+# pylint: enable=no-name-in-module
 
 
 TITLE = "Grid"
@@ -63,6 +66,20 @@ class Game:
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     self.loop = False
+                elif event.key == K_SPACE:
+                    self.player.move((40, 40))
+                elif event.key == K_LEFT:
+                    x, y = self.player.pos
+                    self.player.move((x - TILE_SIZE, y))
+                elif event.key == K_RIGHT:
+                    x, y = self.player.pos
+                    self.player.move((x + TILE_SIZE, y))
+                elif event.key == K_UP:
+                    x, y = self.player.pos
+                    self.player.move((x, y - TILE_SIZE))
+                elif event.key == K_DOWN:
+                    x, y = self.player.pos
+                    self.player.move((x, y + TILE_SIZE))
             elif event.type == MOUSEBUTTONDOWN:
                 pos = pg.mouse.get_pos()
                 self.player.move(pos)
