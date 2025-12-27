@@ -1,5 +1,3 @@
-
-import pygame as pg
 from helpers import DEFAULTS
 
 
@@ -19,14 +17,6 @@ class Player:
         # TODO: Wack hack...
         self._should_eat = False
 
-    def draw(self):
-        # Draw tail
-        for segment in self._tail:
-            pg.draw.circle(self.surface, (200, 200, 200), segment, 20)
-        # Draw head
-        pg.draw.circle(self.surface, (255, 255, 255), self._pos, 40)
-
-    # TODO: Should proabably nuke the tail if dist > 1 (due to mouse click)
     def set_pos(self, target):
         self._pos = target
         if self._tail:
@@ -90,3 +80,6 @@ class Player:
 
     def set_tail(self, tail):
         self._tail = tail
+
+    def get_tail(self):
+        return self._tail

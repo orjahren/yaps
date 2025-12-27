@@ -56,7 +56,7 @@ class Game:
                     (row * TILE_SIZE, col * TILE_SIZE, TILE_SIZE, TILE_SIZE),
                 )
         self._draw_grid_labels()
-        self.player.draw()
+        self._draw_player(self.player)
 
         if self.player.should_die():
             print("You died!")
@@ -130,6 +130,14 @@ class Game:
             self.surface.blit(left_text, left_text.get_rect(center=(12, y)))
             self.surface.blit(right_text, right_text.get_rect(
                 center=(WINDOW_WIDTH - 12, y)))
+
+    def _draw_player(self, player):
+        # Draw tail
+        for segment in player.get_tail():
+            pg.draw.circle(self.surface, (200, 200, 200), segment, 20)
+        # Draw head
+        pg.draw.circle(self.surface, (255, 255, 255),
+                       player.get_pos(), 40)
 
 
 if __name__ == "__main__":
