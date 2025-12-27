@@ -34,6 +34,10 @@ class Player:
 
         self.pos = (x, y)
 
+        # Move tail
+        if self._tail:
+            self._tail = [self.pos] + self._tail[:-1]
+
     def grow(self):
         self._tail.append(self.pos)
 
@@ -58,9 +62,6 @@ class Game:
         # TODO: Hva skjer med lintingen?
         pg.quit()
         # pylint: enable=no-member
-
-    def spawn_fruit(self):
-        pass
 
     def grid_loop(self):
         self.surface.fill((0, 0, 0))
