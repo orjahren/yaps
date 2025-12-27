@@ -29,3 +29,7 @@ def get_key_from_value(dic, value):
         if dir_value == value:
             return key
     return None
+
+
+def is_opposite_direction(dir1, dir2):
+    return dir1[0] == -dir2[0] and dir1[1] == -dir2[1]

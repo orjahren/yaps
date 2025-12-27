@@ -6,7 +6,7 @@ import pygame as pg
 # TODO: Hva skjer med lintingen?
 from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE,  K_SPACE
 
-from helpers import DEFAULTS, DIRECTIONS, KEY_TO_DIRECTION, get_key_from_value
+from helpers import DEFAULTS, DIRECTIONS, KEY_TO_DIRECTION, get_key_from_value, is_opposite_direction
 # pylint: enable=no-name-in-module
 
 
@@ -98,6 +98,9 @@ class Player:
     def set_direction(self, direction):
         self._current_direction = direction
 
+    def get_direction(self):
+        return self._current_direction
+
     def set_tail(self, tail):
         self._tail = tail
 
@@ -176,6 +179,11 @@ class Game:
                     self.player.set_direction(DEFAULTS["direction"])
                     self.player.set_tail([])
                 if (next_direction := KEY_TO_DIRECTION.get(event.key, None)):
+
+                    if is_opposite_direction(next_direction, self.player.get_direction()):
+                        print(
+                            f"Ignoring opposite direction {get_key_from_value(DIRECTIONS, next_direction)}")
+                        continue
                     print(
                         f"Setting direction to {get_key_from_value(DIRECTIONS, next_direction)}")
                     self.player.set_direction(next_direction)
