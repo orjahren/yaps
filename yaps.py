@@ -1,5 +1,6 @@
-import pygame as pg
 import random
+
+import pygame as pg
 
 # pylint: disable=no-name-in-module
 # TODO: Hva skjer med lintingen?
@@ -7,7 +8,7 @@ from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE, K_LEFT, K
 # pylint: enable=no-name-in-module
 
 
-TITLE = "Grid"
+TITLE = "YAPS - Yet Another Python Snake"
 TILES_HORIZONTAL = 10
 TILES_VERTICAL = 10
 TILE_SIZE = 80
@@ -15,31 +16,108 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 800
 
 
+DIRECTIONS = {
+    "UP": (0, -1),
+    "DOWN": (0, 1),
+    "LEFT": (-1, 0),
+    "RIGHT": (1, 0),
+}
+
+KEY_TO_DIRECTION = {
+    K_UP: DIRECTIONS["UP"],
+    K_DOWN: DIRECTIONS["DOWN"],
+    K_LEFT: DIRECTIONS["LEFT"],
+    K_RIGHT: DIRECTIONS["RIGHT"],
+}
+
+DEFAULTS = {
+    "player_pos": (40, 40),
+    "direction": DIRECTIONS["RIGHT"],
+}
+
+
 class Player:
+
     def __init__(self, surface):
         self.surface = surface
-        self.pos = (40, 40)
+        self._pos = DEFAULTS["player_pos"]
         self._tail = []
+        self._current_direction = DEFAULTS["direction"]
+        # Movement cadence state so framerate and speed can be tuned independently
+        self._move_delay = 150  # milliseconds between steps
+        self._move_accumulator = 0
+
+        # TODO: Wack hack...
+        self._should_eat = False
 
     def draw(self):
         # Draw tail
         for segment in self._tail:
             pg.draw.circle(self.surface, (200, 200, 200), segment, 20)
         # Draw head
-        pg.draw.circle(self.surface, (255, 255, 255), self.pos, 40)
+        pg.draw.circle(self.surface, (255, 255, 255), self._pos, 40)
 
-    def move(self, target):
-        x = (80 * (target[0] // 80)) + 40
-        y = (80 * (target[1] // 80)) + 40
-
-        self.pos = (x, y)
-
+    # TODO: Should proabably nuke the tail if dist > 1 (due to mouse click)
+    def set_pos(self, target):
+        self._pos = target
         # Move tail
         if self._tail:
-            self._tail = [self.pos] + self._tail[:-1]
+            self._tail = [self._pos] + self._tail[:-1]
 
+    def get_pos(self):
+        return self._pos
+
+    def get_next_pos(self, old_pos):
+        old_x, old_y = old_pos
+        new_x = (80 * (old_x // 80)) + 40 + \
+            self._current_direction[0] * 80
+        new_y = (80 * (old_y // 80)) + 40 + \
+            self._current_direction[1] * 80
+
+        # wrap around logic
+        if new_x < 40:
+            new_x = WINDOW_WIDTH - 40
+        elif new_x > WINDOW_WIDTH - 40:
+            new_x = 40
+
+        if new_y < 40:
+            new_y = WINDOW_HEIGHT - 40
+        elif new_y > WINDOW_HEIGHT - 40:
+            new_y = 40
+
+        return (new_x, new_y)
+
+    def move(self):
+        prev_pos = self._pos
+        new_pos = self.get_next_pos(prev_pos)
+        if self._should_eat:
+            self._tail.insert(0, prev_pos)
+            self._should_eat = False
+        elif self._tail:
+            self._tail = [prev_pos] + self._tail[:-1]
+        self._pos = new_pos
+
+    # TODO: Er dette måten å gjøre det på??
+    def update(self, delta_ms):
+        """Advance the player when enough time has elapsed."""
+        self._move_accumulator += delta_ms
+        if self._move_accumulator < self._move_delay:
+            return
+        # Preserve leftover time so slight jitter is averaged out
+        self._move_accumulator %= self._move_delay
+        self.move()
+
+    # TODO: Refactor grow logic
     def grow(self):
-        self._tail.append(self.pos)
+        self._should_eat = True
+
+    def should_die(self):
+        print(self._pos, self._tail)
+        return self._pos in self._tail
+        return self._pos in self._tail and self._pos != self._tail[-1]
+
+    def set_direction(self, direction):
+        self._current_direction = direction
 
 
 class Game:
@@ -64,6 +142,8 @@ class Game:
         # pylint: enable=no-member
 
     def grid_loop(self):
+        delta_ms = self.clock.tick(120)
+
         self.surface.fill((0, 0, 0))
         for row in range(TILES_HORIZONTAL):
             for col in range(row % 2, TILES_HORIZONTAL, 2):
@@ -74,8 +154,17 @@ class Game:
                 )
         self.player.draw()
 
+        if self.player.should_die():
+            print("You died!")
+            self.loop = False
+
+            # Make screen red and dramatic to indicate death
+            self.surface.fill((255, 0, 0))
+            pg.display.update()
+            pg.time.delay(2000)
+
         # Fruit logic
-        if self.player.pos == self._current_fruit:
+        if self.player.get_pos() == self._current_fruit:
             self.player.grow()
             self._current_fruit = None, None
 
@@ -95,22 +184,16 @@ class Game:
                 if event.key == K_ESCAPE:
                     self.loop = False
                 elif event.key == K_SPACE:
-                    self.player.move((40, 40))
-                elif event.key == K_LEFT:
-                    x, y = self.player.pos
-                    self.player.move((x - TILE_SIZE, y))
-                elif event.key == K_RIGHT:
-                    x, y = self.player.pos
-                    self.player.move((x + TILE_SIZE, y))
-                elif event.key == K_UP:
-                    x, y = self.player.pos
-                    self.player.move((x, y - TILE_SIZE))
-                elif event.key == K_DOWN:
-                    x, y = self.player.pos
-                    self.player.move((x, y + TILE_SIZE))
+                    print("Resetting player position and direction")
+                    self.player.set_pos((DEFAULTS["player_pos"]))
+                    self.player.set_direction(DEFAULTS["direction"])
+                if (next_direction := KEY_TO_DIRECTION.get(event.key, None)):
+                    print(f"Setting direction to {next_direction}")
+                    self.player.set_direction(next_direction)
             elif event.type == MOUSEBUTTONDOWN:
                 pos = pg.mouse.get_pos()
-                self.player.move(pos)
+                self.player.set_pos(pos)
+        self.player.update(delta_ms)
         pg.display.update()
 
 
