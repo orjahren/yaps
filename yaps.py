@@ -179,14 +179,18 @@ class Game:
                     self.player.set_direction(DEFAULTS["direction"])
                     self.player.set_tail([])
                 if (next_direction := KEY_TO_DIRECTION.get(event.key, None)):
-
+                    pretty_next_dir = get_key_from_value(
+                        DIRECTIONS, next_direction)
                     if is_opposite_direction(next_direction, self.player.get_direction()):
                         print(
-                            f"Ignoring opposite direction {get_key_from_value(DIRECTIONS, next_direction)}")
-                        continue
-                    print(
-                        f"Setting direction to {get_key_from_value(DIRECTIONS, next_direction)}")
-                    self.player.set_direction(next_direction)
+                            f"Ignoring opposite direction {pretty_next_dir}")
+                    elif next_direction == self.player.get_direction():
+                        print(
+                            f"Ignoring same direction {pretty_next_dir}")
+                    else:
+                        print(
+                            f"Setting direction to {pretty_next_dir}")
+                        self.player.set_direction(next_direction)
             elif event.type == MOUSEBUTTONDOWN:
                 pos = pg.mouse.get_pos()
                 self.player.set_pos(pos)
