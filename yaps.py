@@ -129,9 +129,13 @@ class Game:
         self.clock = pg.time.Clock()
         pg.display.set_caption(TITLE)
         self.surface = pg.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.font = pg.font.Font(None, 24)
         self.loop = True
         self.player = Player(self.surface)
         self._current_fruit = None, None
+        self._col_labels = [chr(ord('A') + i) for i in range(TILES_HORIZONTAL)]
+        self._row_labels = [str(TILES_VERTICAL - i)
+                            for i in range(TILES_VERTICAL)]
 
     def main(self):
         while self.loop:
@@ -152,6 +156,7 @@ class Game:
                     (40, 40, 40),
                     (row * TILE_SIZE, col * TILE_SIZE, TILE_SIZE, TILE_SIZE),
                 )
+        self._draw_grid_labels()
         self.player.draw()
 
         if self.player.should_die():
@@ -195,6 +200,25 @@ class Game:
                 self.player.set_pos(pos)
         self.player.update(delta_ms)
         pg.display.update()
+
+    def _draw_grid_labels(self):
+        """Render chess-like file/rank labels along the board edges."""
+        label_color = (160, 160, 160)
+        for idx, letter in enumerate(self._col_labels):
+            x = idx * TILE_SIZE + TILE_SIZE // 2
+            top_text = self.font.render(letter, True, label_color)
+            bottom_text = self.font.render(letter, True, label_color)
+            self.surface.blit(top_text, top_text.get_rect(center=(x, 12)))
+            self.surface.blit(bottom_text, bottom_text.get_rect(
+                center=(x, WINDOW_HEIGHT - 12)))
+
+        for idx, number in enumerate(self._row_labels):
+            y = idx * TILE_SIZE + TILE_SIZE // 2
+            left_text = self.font.render(number, True, label_color)
+            right_text = self.font.render(number, True, label_color)
+            self.surface.blit(left_text, left_text.get_rect(center=(12, y)))
+            self.surface.blit(right_text, right_text.get_rect(
+                center=(WINDOW_WIDTH - 12, y)))
 
 
 if __name__ == "__main__":
