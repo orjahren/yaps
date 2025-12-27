@@ -4,36 +4,18 @@ import pygame as pg
 
 # pylint: disable=no-name-in-module
 # TODO: Hva skjer med lintingen?
-from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE, K_LEFT, K_RIGHT, K_UP, K_DOWN, K_SPACE
+from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE,  K_SPACE
+
+from helpers import DEFAULTS, DIRECTIONS, KEY_TO_DIRECTION, get_key_from_value
 # pylint: enable=no-name-in-module
 
 
-TITLE = "YAPS - Yet Another Python Snake"
+TITLE = "YAPS - Yet Another PyGame Snake"
 TILES_HORIZONTAL = 10
 TILES_VERTICAL = 10
 TILE_SIZE = 80
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 800
-
-
-DIRECTIONS = {
-    "UP": (0, -1),
-    "DOWN": (0, 1),
-    "LEFT": (-1, 0),
-    "RIGHT": (1, 0),
-}
-
-KEY_TO_DIRECTION = {
-    K_UP: DIRECTIONS["UP"],
-    K_DOWN: DIRECTIONS["DOWN"],
-    K_LEFT: DIRECTIONS["LEFT"],
-    K_RIGHT: DIRECTIONS["RIGHT"],
-}
-
-DEFAULTS = {
-    "player_pos": (40, 40),
-    "direction": DIRECTIONS["RIGHT"],
-}
 
 
 class Player:
@@ -60,7 +42,6 @@ class Player:
     # TODO: Should proabably nuke the tail if dist > 1 (due to mouse click)
     def set_pos(self, target):
         self._pos = target
-        # Move tail
         if self._tail:
             self._tail = [self._pos] + self._tail[:-1]
 
@@ -112,12 +93,13 @@ class Player:
         self._should_eat = True
 
     def should_die(self):
-        print(self._pos, self._tail)
         return self._pos in self._tail
-        return self._pos in self._tail and self._pos != self._tail[-1]
 
     def set_direction(self, direction):
         self._current_direction = direction
+
+    def set_tail(self, tail):
+        self._tail = tail
 
 
 class Game:
@@ -192,12 +174,15 @@ class Game:
                     print("Resetting player position and direction")
                     self.player.set_pos((DEFAULTS["player_pos"]))
                     self.player.set_direction(DEFAULTS["direction"])
+                    self.player.set_tail([])
                 if (next_direction := KEY_TO_DIRECTION.get(event.key, None)):
-                    print(f"Setting direction to {next_direction}")
+                    print(
+                        f"Setting direction to {get_key_from_value(DIRECTIONS, next_direction)}")
                     self.player.set_direction(next_direction)
             elif event.type == MOUSEBUTTONDOWN:
                 pos = pg.mouse.get_pos()
                 self.player.set_pos(pos)
+                self.player.set_tail([])
         self.player.update(delta_ms)
         pg.display.update()
 
