@@ -1,4 +1,5 @@
 from collections import deque
+from itertools import islice
 from pygame import Surface
 from helpers import DEFAULTS, DIRECTIONS, Coordinate, Direction, Tail, direction_change_is_legal, get_key_from_value
 
@@ -10,7 +11,7 @@ class Player:
         self.width = width
         self.height = height
         self._pos = DEFAULTS["player_pos"]
-        self._tail: Tail = []
+        self._tail: Tail = deque()
         self._current_direction = DEFAULTS["direction"]
         self._autopilot_enabled = DEFAULTS["autopilot_enabled"]
         # Movement cadence state so framerate and speed can be tuned independently
@@ -18,14 +19,11 @@ class Player:
         self._move_accumulator = 0
         self._pending_tail_owners: deque[bool] = deque()
 
-        # TODO: Wack hack...
-        self._should_eat = False
-
     def set_pos(self, target: Coordinate) -> None:
         self._pos = target
         if self._tail:
-            self._tail = [(self._pos, self._autopilot_enabled)
-                          ] + self._tail[:-1]
+            self._tail.pop()
+        self._tail.appendleft((self._pos, self._autopilot_enabled))
 
     def get_pos(self):
         return self._pos
@@ -57,14 +55,16 @@ class Player:
         if self._pending_tail_owners:
             while self._pending_tail_owners:
                 owner = self._pending_tail_owners.popleft()
-                self._tail.insert(0, (prev_pos, owner))
+                self._tail.appendleft((prev_pos, owner))
         elif self._tail:
-            previous_positions = [prev_pos] + \
-                [pos for pos, _ in self._tail[:-1]]
-            self._tail = [
-                (position, owner)
-                for position, (_, owner) in zip(previous_positions, self._tail)
-            ]
+            owners = [owner for _, owner in self._tail]
+            positions = [prev_pos]
+            positions.extend(
+                pos for pos, _ in islice(self._tail, 0, len(self._tail) - 1)
+            )
+
+            self._tail.clear()
+            self._tail.extend(zip(positions, owners))
 
         self._pos = new_pos
 
@@ -103,6 +103,9 @@ class Player:
 
     def get_tail(self) -> Tail:
         return self._tail
+
+    def reset_tail(self) -> None:
+        self._tail.clear()
 
     def toggle_autopilot(self, override: bool = None) -> None:  # type: ignore
         if override is not None:

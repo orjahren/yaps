@@ -95,7 +95,7 @@ class Game:
                     print("Resetting player position and direction")
                     self.player.set_pos((DEFAULTS["player_pos"]))
                     self.player.set_direction(DEFAULTS["direction"])
-                    self.player.set_tail([])
+                    self.player.reset_tail()
                 if (next_direction := KEY_TO_DIRECTION.get(event.key, None)) and direction_change_is_legal(self.player.get_direction(), next_direction):
                     print(
                         f"Setting direction to {get_key_from_value(DIRECTIONS, next_direction)}")
@@ -103,7 +103,7 @@ class Game:
             elif event.type == MOUSEBUTTONDOWN:
                 pos = pg.mouse.get_pos()
                 self.player.set_pos(pos)
-                self.player.set_tail([])
+                self.player.reset_tail()
         self.player.update(delta_ms, self._current_fruit)
         pg.display.update()
 
