@@ -1,6 +1,7 @@
 from collections import deque
 from itertools import islice
 from pygame import Surface
+from algorithms import compute_autopilot_direction
 from helpers import DEFAULTS, DIRECTIONS, Coordinate, Direction, Tail, direction_change_is_legal, get_key_from_value
 
 
@@ -138,22 +139,20 @@ class Player:
         return self._spawn_pos
 
     def _get_next_direction(self, fruit_coords: Coordinate) -> Direction:
+        next_direction = compute_autopilot_direction(
+            head=self.get_pos(),
+            fruit=fruit_coords,
+            tail=self._tail,
+            tile_size=self._tile_size,
+            cols=self._tiles_horizontal,
+            rows=self._tiles_vertical,
+        )
 
-        if fruit_coords:
-            fruit_x, fruit_y = fruit_coords
-            npc_x, npc_y = self.get_pos()
-
-            if fruit_x > npc_x:
-                return DIRECTIONS["RIGHT"]
-            elif fruit_x < npc_x:
-                return DIRECTIONS["LEFT"]
-            elif fruit_y > npc_y:
-                return DIRECTIONS["DOWN"]
-            elif fruit_y < npc_y:
-                return DIRECTIONS["UP"]
-
-            print("NPC is already at the fruit position.")
+        if next_direction is None:
+            print("Autopilot keeping current direction; no better path found.")
             return self.get_direction()
+
+        return next_direction
 
     def _snap_to_grid(self, coord: Coordinate) -> Coordinate:
         step = self._tile_size
