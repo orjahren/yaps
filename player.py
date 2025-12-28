@@ -33,6 +33,7 @@ class Player:
         self._move_delay = self._compute_move_delay()
         self._move_accumulator = 0
         self._pending_tail_owners: deque[bool] = deque()
+        self._hit_wall = False
 
     def set_pos(self, target: Coordinate) -> None:
         snapped_target = self._snap_to_grid(target)
@@ -40,36 +41,23 @@ class Player:
         if self._tail:
             self._tail.pop()
         self._tail.appendleft((self._pos, self._autopilot_enabled))
+        self._hit_wall = False
 
     def get_pos(self):
         return self._pos
 
-    def get_next_pos(self, old_pos: Coordinate) -> Coordinate:
-        step = self._tile_size
-        offset = self._half_tile
-        old_x, old_y = old_pos
-        snapped_x = ((old_x - offset) // step) * step + offset
-        snapped_y = ((old_y - offset) // step) * step + offset
-
-        new_x = snapped_x + self._current_direction[0] * step
-        new_y = snapped_y + self._current_direction[1] * step
-
-        # wrap around logic
-        if new_x < offset:
-            new_x = self.width - offset
-        elif new_x > self.width - offset:
-            new_x = offset
-
-        if new_y < offset:
-            new_y = self.height - offset
-        elif new_y > self.height - offset:
-            new_y = offset
-
+    def get_next_pos(self, old_pos: Coordinate) -> Optional[Coordinate]:
         return self._step_from(old_pos, self._current_direction)
 
     def move(self) -> None:
+        if self._hit_wall:
+            return
         prev_pos = self._pos
         new_pos = self.get_next_pos(prev_pos)
+
+        if new_pos is None:
+            self._hit_wall = True
+            return
 
         if self._pending_tail_owners:
             while self._pending_tail_owners:
@@ -90,6 +78,8 @@ class Player:
     # TODO: Er dette måten å gjøre det på??
     def update(self, delta_ms: int, fruit_coords: Coordinate) -> None:
         """Advance the player when enough time has elapsed."""
+        if self._hit_wall:
+            return
         self._move_accumulator += delta_ms
         if self._move_accumulator < self._move_delay:
             return
@@ -109,7 +99,7 @@ class Player:
         self._pending_tail_owners.append(by_autopilot)
 
     def should_die(self) -> bool:
-        return self._pos in (pos for pos, _ in self._tail)
+        return self._hit_wall or self._pos in (pos for pos, _ in self._tail)
 
     def set_direction(self, direction: Direction) -> None:
         self._current_direction = direction
@@ -202,12 +192,14 @@ class Player:
         return {pos for pos, _ in self._tail}
 
     def _would_hit_tail(self, direction: Direction) -> bool:
+        next_pos = self._step_from(self._pos, direction)
+        if next_pos is None:
+            return True
         if not self._tail:
             return False
-        next_pos = self._step_from(self._pos, direction)
         return next_pos in self._tail_positions()
 
-    def _step_from(self, origin: Coordinate, direction: Direction) -> Coordinate:
+    def _step_from(self, origin: Coordinate, direction: Direction) -> Optional[Coordinate]:
         step = self._tile_size
         offset = self._half_tile
         old_x, old_y = origin
@@ -217,14 +209,10 @@ class Player:
         new_x = snapped_x + direction[0] * step
         new_y = snapped_y + direction[1] * step
 
-        if new_x < offset:
-            new_x = self.width - offset
-        elif new_x > self.width - offset:
-            new_x = offset
-
-        if new_y < offset:
-            new_y = self.height - offset
-        elif new_y > self.height - offset:
-            new_y = offset
-
+        if not self._is_within_bounds(new_x, new_y):
+            return None
         return (new_x, new_y)
+
+    def _is_within_bounds(self, x: int, y: int) -> bool:
+        offset = self._half_tile
+        return offset <= x <= self.width - offset and offset <= y <= self.height - offset

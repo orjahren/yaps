@@ -54,8 +54,8 @@ def _direction_via_bfs(
             break
 
         for step in DIRECTIONS.values():
-            neighbor = _wrap_add(current, step, cols, rows)
-            if neighbor in parents:
+            neighbor = _neighbor(current, step, cols, rows)
+            if neighbor is None or neighbor in parents:
                 continue
             if neighbor in occupied and neighbor != goal:
                 continue
@@ -78,10 +78,12 @@ def _direction_via_bfs(
     return direction
 
 
-def _wrap_add(position: GridCoord, delta: Direction, cols: int, rows: int) -> GridCoord:
-    col = (position[0] + delta[0]) % cols
-    row = (position[1] + delta[1]) % rows
-    return (col, row)
+def _neighbor(position: GridCoord, delta: Direction, cols: int, rows: int) -> Optional[GridCoord]:
+    col = position[0] + delta[0]
+    row = position[1] + delta[1]
+    if 0 <= col < cols and 0 <= row < rows:
+        return (col, row)
+    return None
 
 
 def _tail_cells(tail: Tail, tile_size: int, cols: int, rows: int) -> set[GridCoord]:
@@ -93,9 +95,11 @@ def _tail_cells(tail: Tail, tile_size: int, cols: int, rows: int) -> set[GridCoo
 
 def _to_grid(coord: Coordinate, tile_size: int, cols: int, rows: int) -> GridCoord:
     offset = tile_size // 2
-    col = ((coord[0] - offset) // tile_size) % cols
-    row = ((coord[1] - offset) // tile_size) % rows
-    return (int(col), int(row))
+    col = int((coord[0] - offset) // tile_size)
+    row = int((coord[1] - offset) // tile_size)
+    col = max(0, min(cols - 1, col))
+    row = max(0, min(rows - 1, row))
+    return (col, row)
 
 
 def _greedy_direction(
@@ -109,30 +113,26 @@ def _greedy_direction(
     head_grid = _to_grid(head, tile_size, cols, rows)
     fruit_grid = _to_grid(fruit, tile_size, cols, rows)
 
-    step_x = _wrapped_step(head_grid[0], fruit_grid[0], cols)
+    step_x = _linear_step(head_grid[0], fruit_grid[0])
     if step_x != 0:
         direction = DIRECTIONS["RIGHT"] if step_x > 0 else DIRECTIONS["LEFT"]
-        target = _wrap_add(head_grid, direction, cols, rows)
-        if target not in occupied:
+        target = _neighbor(head_grid, direction, cols, rows)
+        if target is not None and target not in occupied:
             return direction
 
-    step_y = _wrapped_step(head_grid[1], fruit_grid[1], rows)
+    step_y = _linear_step(head_grid[1], fruit_grid[1])
     if step_y != 0:
         direction = DIRECTIONS["DOWN"] if step_y > 0 else DIRECTIONS["UP"]
-        target = _wrap_add(head_grid, direction, cols, rows)
-        if target not in occupied:
+        target = _neighbor(head_grid, direction, cols, rows)
+        if target is not None and target not in occupied:
             return direction
 
     return None
 
 
-def _wrapped_step(current: int, target: int, limit: int) -> int:
-    if limit <= 1 or current == target:
-        return 0
-    forward = (target - current) % limit
-    backward = (current - target) % limit
-    if forward == 0:
-        return 0
-    if forward <= backward:
+def _linear_step(current: int, target: int) -> int:
+    if target > current:
         return 1
-    return -1
+    if target < current:
+        return -1
+    return 0
