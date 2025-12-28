@@ -19,3 +19,17 @@ PyGame. See the [requirements file](./requirements.txt).
 - Arrows for moving the snake.
 - Space for resetting to default position.
 - Click on a tile to jump to it.
+
+### Customizing the grid
+
+Override the defaults when launching the game:
+
+- `--tile-size` for the pixel size of each tile.
+- `--tiles-horizontal` for the number of columns.
+- `--tiles-vertical` for the number of rows.
+
+Example:
+
+`$ python yaps.py --tile-size 64 --tiles-horizontal 14 --tiles-vertical 12`
+
+```

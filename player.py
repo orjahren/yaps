@@ -6,11 +6,14 @@ from helpers import DEFAULTS, DIRECTIONS, Coordinate, Direction, Tail, direction
 
 class Player:
 
-    def __init__(self, surface: Surface, width: int, height: int):
+    def __init__(self, surface: Surface, width: int, height: int, tile_size: int):
         self.surface: Surface = surface
         self.width = width
         self.height = height
-        self._pos = DEFAULTS["player_pos"]
+        self._tile_size = tile_size
+        self._half_tile = max(1, tile_size // 2)
+        self._spawn_pos = (self._half_tile, self._half_tile)
+        self._pos = self._spawn_pos
         self._tail: Tail = deque()
         self._current_direction = DEFAULTS["direction"]
         self._autopilot_enabled = DEFAULTS["autopilot_enabled"]
@@ -20,7 +23,8 @@ class Player:
         self._pending_tail_owners: deque[bool] = deque()
 
     def set_pos(self, target: Coordinate) -> None:
-        self._pos = target
+        snapped_target = self._snap_to_grid(target)
+        self._pos = snapped_target
         if self._tail:
             self._tail.pop()
         self._tail.appendleft((self._pos, self._autopilot_enabled))
@@ -29,22 +33,25 @@ class Player:
         return self._pos
 
     def get_next_pos(self, old_pos: Coordinate) -> Coordinate:
+        step = self._tile_size
+        offset = self._half_tile
         old_x, old_y = old_pos
-        new_x = (80 * (old_x // 80)) + 40 + \
-            self._current_direction[0] * 80
-        new_y = (80 * (old_y // 80)) + 40 + \
-            self._current_direction[1] * 80
+        snapped_x = ((old_x - offset) // step) * step + offset
+        snapped_y = ((old_y - offset) // step) * step + offset
+
+        new_x = snapped_x + self._current_direction[0] * step
+        new_y = snapped_y + self._current_direction[1] * step
 
         # wrap around logic
-        if new_x < 40:
-            new_x = self.width - 40
-        elif new_x > self.width - 40:
-            new_x = 40
+        if new_x < offset:
+            new_x = self.width - offset
+        elif new_x > self.width - offset:
+            new_x = offset
 
-        if new_y < 40:
-            new_y = self.height - 40
-        elif new_y > self.height - 40:
-            new_y = 40
+        if new_y < offset:
+            new_y = self.height - offset
+        elif new_y > self.height - offset:
+            new_y = offset
 
         return (new_x, new_y)
 
@@ -106,6 +113,7 @@ class Player:
 
     def reset_tail(self) -> None:
         self._tail.clear()
+        self._pending_tail_owners.clear()
 
     def toggle_autopilot(self, override: bool = None) -> None:  # type: ignore
         if override is not None:
@@ -115,6 +123,9 @@ class Player:
 
     def is_autopilot_enabled(self) -> bool:
         return self._autopilot_enabled
+
+    def get_spawn_pos(self) -> Coordinate:
+        return self._spawn_pos
 
     def _get_next_direction(self, fruit_coords: Coordinate) -> Direction:
 
@@ -133,3 +144,12 @@ class Player:
 
             print("NPC is already at the fruit position.")
             return self.get_direction()
+
+    def _snap_to_grid(self, coord: Coordinate) -> Coordinate:
+        step = self._tile_size
+        offset = self._half_tile
+        clamped_x = min(max(coord[0], offset), self.width - offset)
+        clamped_y = min(max(coord[1], offset), self.height - offset)
+        snapped_x = ((clamped_x - offset) // step) * step + offset
+        snapped_y = ((clamped_y - offset) // step) * step + offset
+        return (snapped_x, snapped_y)

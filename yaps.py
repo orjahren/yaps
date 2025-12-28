@@ -1,4 +1,7 @@
+import argparse
 import random
+
+from typing import Optional
 
 import pygame as pg
 
@@ -12,30 +15,36 @@ from player import Player
 
 
 TITLE = "YAPS - Yet Another PyGame Snake"
-TILES_HORIZONTAL = 10
-TILES_VERTICAL = 10
-TILE_SIZE = 80
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 800
+DEFAULT_TILES_HORIZONTAL = 10
+DEFAULT_TILES_VERTICAL = 10
+DEFAULT_TILE_SIZE = 80
 
 
 class Game:
-    def __init__(self):
+    def __init__(self, tile_size: int, tiles_horizontal: int, tiles_vertical: int):
         # pylint: disable=no-member
         # TODO: Hva skjer med lintingen?
         pg.init()
         # pylint: enable=no-member
         self.clock = pg.time.Clock()
         pg.display.set_caption(TITLE)
-        self.surface = pg.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.tile_size = max(10, tile_size)
+        self.tiles_horizontal = max(2, tiles_horizontal)
+        self.tiles_vertical = max(2, tiles_vertical)
+        self.window_width = self.tiles_horizontal * self.tile_size
+        self.window_height = self.tiles_vertical * self.tile_size
+        self.surface = pg.display.set_mode(
+            (self.window_width, self.window_height))
         self.font = pg.font.Font(None, 24)
         self.loop = True
-        self.player = Player(self.surface, WINDOW_WIDTH, WINDOW_HEIGHT)
-        self._current_fruit: Coordinate = None, None  # type: ignore
+        self.player = Player(self.surface, self.window_width,
+                             self.window_height, self.tile_size)
+        self._current_fruit: Optional[Coordinate] = None
 
-        self._col_labels = [chr(ord('A') + i) for i in range(TILES_HORIZONTAL)]
-        self._row_labels = [str(TILES_VERTICAL - i)
-                            for i in range(TILES_VERTICAL)]
+        self._col_labels = [chr(ord('A') + i)
+                            for i in range(self.tiles_horizontal)]
+        self._row_labels = [str(self.tiles_vertical - i)
+                            for i in range(self.tiles_vertical)]
 
     def main(self) -> None:
         while self.loop:
@@ -49,14 +58,17 @@ class Game:
         delta_ms = self.clock.tick(120)
 
         self.surface.fill((0, 0, 0))
-        for row in range(TILES_HORIZONTAL):
-            for col in range(row % 2, TILES_HORIZONTAL, 2):
+        for row in range(self.tiles_horizontal):
+            for col in range(row % 2, self.tiles_vertical, 2):
                 pg.draw.rect(
                     self.surface,
                     (40, 40, 40),
-                    (row * TILE_SIZE, col * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+                    (row * self.tile_size, col * self.tile_size,
+                     self.tile_size, self.tile_size),
                 )
-        self._draw_grid_labels()
+        if can_show_grid_labels := self.tile_size >= 40:
+            self._draw_grid_labels()
+
         self._draw_player(self.player)
 
         if self.player.should_die():
@@ -69,16 +81,23 @@ class Game:
             pg.time.delay(2000)
 
         # Fruit logic
-        if self.player.get_pos() == self._current_fruit:
+        if self._current_fruit and self.player.get_pos() == self._current_fruit:
             self.player.grow(self.player.is_autopilot_enabled())
-            self._current_fruit = None, None  # type: ignore
+            self._current_fruit = None
 
-        if self._current_fruit == (None, None):
-            fruit_x = random.randint(0, TILES_HORIZONTAL - 1) * TILE_SIZE + 40
-            fruit_y = random.randint(0, TILES_VERTICAL - 1) * TILE_SIZE + 40
-            self._current_fruit = (fruit_x, fruit_y)
+        if self._current_fruit is None:
+            offset = self.tile_size // 2
+            fruit_x = random.randint(0, self.tiles_horizontal - 1)
+            fruit_y = random.randint(0, self.tiles_vertical - 1)
+            self._current_fruit = (
+                fruit_x * self.tile_size + offset,
+                fruit_y * self.tile_size + offset,
+            )
 
-        pg.draw.circle(self.surface, (255, 0, 0), self._current_fruit, 20)
+        if self._current_fruit:
+            fruit_radius = max(5, self.tile_size // 4)
+            pg.draw.circle(self.surface, (255, 0, 0),
+                           self._current_fruit, fruit_radius)
 
         # Event handling
 
@@ -93,7 +112,7 @@ class Game:
                     self.player.toggle_autopilot()
                 elif event.key == K_SPACE:
                     print("Resetting player position and direction")
-                    self.player.set_pos((DEFAULTS["player_pos"]))
+                    self.player.set_pos(self.player.get_spawn_pos())
                     self.player.set_direction(DEFAULTS["direction"])
                     self.player.reset_tail()
                 if (next_direction := KEY_TO_DIRECTION.get(event.key, None)) and direction_change_is_legal(self.player.get_direction(), next_direction):
@@ -104,40 +123,71 @@ class Game:
                 pos = pg.mouse.get_pos()
                 self.player.set_pos(pos)
                 self.player.reset_tail()
-        self.player.update(delta_ms, self._current_fruit)
+        target = self._current_fruit or self.player.get_pos()
+        self.player.update(delta_ms, target)
         pg.display.update()
 
     def _draw_grid_labels(self) -> None:
         """Render chess-like file/rank labels along the board edges."""
         label_color = (160, 160, 160)
+        margin = max(12, self.tile_size // 4)
         for idx, letter in enumerate(self._col_labels):
-            x = idx * TILE_SIZE + TILE_SIZE // 2
+            x = idx * self.tile_size + self.tile_size // 2
             top_text = self.font.render(letter, True, label_color)
             bottom_text = self.font.render(letter, True, label_color)
-            self.surface.blit(top_text, top_text.get_rect(center=(x, 12)))
+            self.surface.blit(top_text, top_text.get_rect(center=(x, margin)))
             self.surface.blit(bottom_text, bottom_text.get_rect(
-                center=(x, WINDOW_HEIGHT - 12)))
+                center=(x, self.window_height - margin)))
 
         for idx, number in enumerate(self._row_labels):
-            y = idx * TILE_SIZE + TILE_SIZE // 2
+            y = idx * self.tile_size + self.tile_size // 2
             left_text = self.font.render(number, True, label_color)
             right_text = self.font.render(number, True, label_color)
-            self.surface.blit(left_text, left_text.get_rect(center=(12, y)))
+            self.surface.blit(
+                left_text, left_text.get_rect(center=(margin, y)))
             self.surface.blit(right_text, right_text.get_rect(
-                center=(WINDOW_WIDTH - 12, y)))
+                center=(self.window_width - margin, y)))
 
     def _draw_player(self, player: Player) -> None:
         # Draw tail
+        tail_radius = max(5, self.tile_size // 4)
+        head_radius = max(tail_radius, self.tile_size // 2)
         for coords, was_ai in player.get_tail():
-            if was_ai:
-                pg.draw.circle(self.surface, (100, 200, 100), coords, 20)
-            else:
-                pg.draw.circle(self.surface, (200, 200, 200), coords, 20)
+            color = (100, 200, 100) if was_ai else (200, 200, 200)
+            pg.draw.circle(self.surface, color, coords, tail_radius)
         # Draw head
         pg.draw.circle(self.surface, (255, 255, 255),
-                       player.get_pos(), 40)
+                       player.get_pos(), head_radius)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=TITLE)
+    parser.add_argument(
+        "--tile-size",
+        type=int,
+        default=DEFAULT_TILE_SIZE,
+        help="Pixel size for each grid tile (default: 80).",
+    )
+    parser.add_argument(
+        "--tiles-horizontal",
+        type=int,
+        default=DEFAULT_TILES_HORIZONTAL,
+        help="Number of tiles along the X axis (default: 10).",
+    )
+    parser.add_argument(
+        "--tiles-vertical",
+        type=int,
+        default=DEFAULT_TILES_VERTICAL,
+        help="Number of tiles along the Y axis (default: 10).",
+    )
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    mygame = Game()
+    args = parse_args()
+    mygame = Game(
+        tile_size=args.tile_size,
+        tiles_horizontal=args.tiles_horizontal,
+        tiles_vertical=args.tiles_vertical,
+    )
     mygame.main()
