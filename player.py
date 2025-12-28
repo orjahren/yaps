@@ -1,3 +1,4 @@
+from collections import deque
 from pygame import Surface
 from helpers import DEFAULTS, DIRECTIONS, Coordinate, Direction, Tail, direction_change_is_legal, get_key_from_value
 
@@ -15,6 +16,7 @@ class Player:
         # Movement cadence state so framerate and speed can be tuned independently
         self._move_delay = 150  # milliseconds between steps
         self._move_accumulator = 0
+        self._pending_tail_owners: deque[bool] = deque()
 
         # TODO: Wack hack...
         self._should_eat = False
@@ -22,7 +24,8 @@ class Player:
     def set_pos(self, target: Coordinate) -> None:
         self._pos = target
         if self._tail:
-            self._tail = [self._pos] + self._tail[:-1]
+            self._tail = [(self._pos, self._autopilot_enabled)
+                          ] + self._tail[:-1]
 
     def get_pos(self):
         return self._pos
@@ -50,11 +53,19 @@ class Player:
     def move(self) -> None:
         prev_pos = self._pos
         new_pos = self.get_next_pos(prev_pos)
-        if self._should_eat:
-            self._tail.insert(0, prev_pos)
-            self._should_eat = False
+
+        if self._pending_tail_owners:
+            while self._pending_tail_owners:
+                owner = self._pending_tail_owners.popleft()
+                self._tail.insert(0, (prev_pos, owner))
         elif self._tail:
-            self._tail = [prev_pos] + self._tail[:-1]
+            previous_positions = [prev_pos] + \
+                [pos for pos, _ in self._tail[:-1]]
+            self._tail = [
+                (position, owner)
+                for position, (_, owner) in zip(previous_positions, self._tail)
+            ]
+
         self._pos = new_pos
 
     # TODO: Er dette måten å gjøre det på??
@@ -75,12 +86,11 @@ class Player:
 
         self.move()
 
-    # TODO: Refactor grow logic
-    def grow(self) -> None:
-        self._should_eat = True
+    def grow(self, by_autopilot: bool) -> None:
+        self._pending_tail_owners.append(by_autopilot)
 
     def should_die(self) -> bool:
-        return self._pos in self._tail
+        return self._pos in (pos for pos, _ in self._tail)
 
     def set_direction(self, direction: Direction) -> None:
         self._current_direction = direction
@@ -99,6 +109,9 @@ class Player:
             self._autopilot_enabled = override
         else:
             self._autopilot_enabled = not self._autopilot_enabled
+
+    def is_autopilot_enabled(self) -> bool:
+        return self._autopilot_enabled
 
     def _get_next_direction(self, fruit_coords: Coordinate) -> Direction:
 

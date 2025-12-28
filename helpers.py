@@ -1,4 +1,4 @@
-from typing import Dict, Optional, TypeVar, List
+from typing import Dict, Optional, Tuple, TypeVar, List
 # pylint: disable=no-name-in-module
 # TODO: Hva skjer med lintingen?
 from pygame.constants import K_UP, K_DOWN, K_LEFT, K_RIGHT
@@ -28,7 +28,8 @@ DEFAULTS = {
 type Coordinate = tuple[int, int]
 # matches the values stored in DIRECTIONS[keyof DIRECTIONS]
 type Direction = tuple[int, int]
-type Tail = List[Coordinate]
+type SnakeSegment = Tuple[Coordinate, bool]  # (position, was won by player/ai)
+type Tail = List[SnakeSegment]
 
 Key = TypeVar("Key")
 Value = TypeVar("Value")

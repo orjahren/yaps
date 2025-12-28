@@ -31,7 +31,7 @@ class Game:
         self.font = pg.font.Font(None, 24)
         self.loop = True
         self.player = Player(self.surface, WINDOW_WIDTH, WINDOW_HEIGHT)
-        self._current_fruit: Coordinate = None, None
+        self._current_fruit: Coordinate = None, None  # type: ignore
 
         self._col_labels = [chr(ord('A') + i) for i in range(TILES_HORIZONTAL)]
         self._row_labels = [str(TILES_VERTICAL - i)
@@ -70,8 +70,8 @@ class Game:
 
         # Fruit logic
         if self.player.get_pos() == self._current_fruit:
-            self.player.grow()
-            self._current_fruit = None, None
+            self.player.grow(self.player.is_autopilot_enabled())
+            self._current_fruit = None, None  # type: ignore
 
         if self._current_fruit == (None, None):
             fruit_x = random.randint(0, TILES_HORIZONTAL - 1) * TILE_SIZE + 40
@@ -128,8 +128,11 @@ class Game:
 
     def _draw_player(self, player: Player) -> None:
         # Draw tail
-        for segment in player.get_tail():
-            pg.draw.circle(self.surface, (200, 200, 200), segment, 20)
+        for coords, was_ai in player.get_tail():
+            if was_ai:
+                pg.draw.circle(self.surface, (100, 200, 100), coords, 20)
+            else:
+                pg.draw.circle(self.surface, (200, 200, 200), coords, 20)
         # Draw head
         pg.draw.circle(self.surface, (255, 255, 255),
                        player.get_pos(), 40)
