@@ -20,18 +20,20 @@ def compute_autopilot_direction(
     if fruit is None:
         return None
 
+    occupied = _tail_cells(tail, tile_size, cols, rows)
+
     bfs_direction = _direction_via_bfs(
-        head, fruit, tail, tile_size, cols, rows)
+        head, fruit, occupied, tile_size, cols, rows)
     if bfs_direction is not None:
         return bfs_direction
 
-    return _greedy_direction(head, fruit, tile_size, cols, rows)
+    return _greedy_direction(head, fruit, occupied, tile_size, cols, rows)
 
 
 def _direction_via_bfs(
     head: Coordinate,
     fruit: Coordinate,
-    tail: Tail,
+    occupied: set[GridCoord],
     tile_size: int,
     cols: int,
     rows: int,
@@ -42,7 +44,6 @@ def _direction_via_bfs(
     if start == goal:
         return None
 
-    occupied = _tail_cells(tail, tile_size, cols, rows)
     queue = deque([start])
     parents: Dict[GridCoord, Optional[GridCoord]] = {start: None}
     moves: Dict[GridCoord, Direction] = {}
@@ -100,6 +101,7 @@ def _to_grid(coord: Coordinate, tile_size: int, cols: int, rows: int) -> GridCoo
 def _greedy_direction(
     head: Coordinate,
     fruit: Coordinate,
+    occupied: set[GridCoord],
     tile_size: int,
     cols: int,
     rows: int,
@@ -108,16 +110,18 @@ def _greedy_direction(
     fruit_grid = _to_grid(fruit, tile_size, cols, rows)
 
     step_x = _wrapped_step(head_grid[0], fruit_grid[0], cols)
-    if step_x > 0:
-        return DIRECTIONS["RIGHT"]
-    if step_x < 0:
-        return DIRECTIONS["LEFT"]
+    if step_x != 0:
+        direction = DIRECTIONS["RIGHT"] if step_x > 0 else DIRECTIONS["LEFT"]
+        target = _wrap_add(head_grid, direction, cols, rows)
+        if target not in occupied:
+            return direction
 
     step_y = _wrapped_step(head_grid[1], fruit_grid[1], rows)
-    if step_y > 0:
-        return DIRECTIONS["DOWN"]
-    if step_y < 0:
-        return DIRECTIONS["UP"]
+    if step_y != 0:
+        direction = DIRECTIONS["DOWN"] if step_y > 0 else DIRECTIONS["UP"]
+        target = _wrap_add(head_grid, direction, cols, rows)
+        if target not in occupied:
+            return direction
 
     return None
 

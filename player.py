@@ -1,5 +1,6 @@
 from collections import deque
 from itertools import islice
+from typing import Optional
 from pygame import Surface
 from algorithms import compute_autopilot_direction
 from helpers import DEFAULTS, DIRECTIONS, Coordinate, Direction, Tail, direction_change_is_legal, get_key_from_value
@@ -64,7 +65,7 @@ class Player:
         elif new_y > self.height - offset:
             new_y = offset
 
-        return (new_x, new_y)
+        return self._step_from(old_pos, self._current_direction)
 
     def move(self) -> None:
         prev_pos = self._pos
@@ -148,11 +149,36 @@ class Player:
             rows=self._tiles_vertical,
         )
 
-        if next_direction is None:
-            print("Autopilot keeping current direction; no better path found.")
-            return self.get_direction()
+        safe_direction = self._avoid_tail(next_direction)
 
-        return next_direction
+        if next_direction is None:
+            print("Autopilot keeping direction; no better path found.")
+        elif safe_direction != next_direction:
+            print("Autopilot adjusted to avoid tail collision.")
+
+        return safe_direction
+
+    def _avoid_tail(self, preferred: Optional[Direction]) -> Direction:
+        candidate_order: list[Direction] = []
+        seen: set[Direction] = set()
+
+        for candidate in (preferred, self._current_direction):
+            if candidate is not None and candidate not in seen:
+                candidate_order.append(candidate)
+                seen.add(candidate)
+
+        for candidate in DIRECTIONS.values():
+            if candidate not in seen:
+                candidate_order.append(candidate)
+                seen.add(candidate)
+
+        for candidate in candidate_order:
+            if candidate != self._current_direction and not direction_change_is_legal(self._current_direction, candidate):
+                continue
+            if not self._would_hit_tail(candidate):
+                return candidate
+
+        return self._current_direction
 
     def _snap_to_grid(self, coord: Coordinate) -> Coordinate:
         step = self._tile_size
@@ -171,3 +197,34 @@ class Player:
         scale = base_avg_tiles / avg_tiles
         clamped_scale = max(0.30, min(2.0, scale))
         return int(base_delay * clamped_scale)
+
+    def _tail_positions(self) -> set[Coordinate]:
+        return {pos for pos, _ in self._tail}
+
+    def _would_hit_tail(self, direction: Direction) -> bool:
+        if not self._tail:
+            return False
+        next_pos = self._step_from(self._pos, direction)
+        return next_pos in self._tail_positions()
+
+    def _step_from(self, origin: Coordinate, direction: Direction) -> Coordinate:
+        step = self._tile_size
+        offset = self._half_tile
+        old_x, old_y = origin
+        snapped_x = ((old_x - offset) // step) * step + offset
+        snapped_y = ((old_y - offset) // step) * step + offset
+
+        new_x = snapped_x + direction[0] * step
+        new_y = snapped_y + direction[1] * step
+
+        if new_x < offset:
+            new_x = self.width - offset
+        elif new_x > self.width - offset:
+            new_x = offset
+
+        if new_y < offset:
+            new_y = self.height - offset
+        elif new_y > self.height - offset:
+            new_y = offset
+
+        return (new_x, new_y)
