@@ -37,8 +37,14 @@ class Game:
             (self.window_width, self.window_height))
         self.font = pg.font.Font(None, 24)
         self.loop = True
-        self.player = Player(self.surface, self.window_width,
-                             self.window_height, self.tile_size)
+        self.player = Player(
+            self.surface,
+            self.window_width,
+            self.window_height,
+            self.tile_size,
+            self.tiles_horizontal,
+            self.tiles_vertical,
+        )
         self._current_fruit: Optional[Coordinate] = None
 
         self._col_labels = [chr(ord('A') + i)

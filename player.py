@@ -6,19 +6,29 @@ from helpers import DEFAULTS, DIRECTIONS, Coordinate, Direction, Tail, direction
 
 class Player:
 
-    def __init__(self, surface: Surface, width: int, height: int, tile_size: int):
+    def __init__(
+        self,
+        surface: Surface,
+        width: int,
+        height: int,
+        tile_size: int,
+        tiles_horizontal: int,
+        tiles_vertical: int,
+    ):
         self.surface: Surface = surface
         self.width = width
         self.height = height
         self._tile_size = tile_size
         self._half_tile = max(1, tile_size // 2)
+        self._tiles_horizontal = max(1, tiles_horizontal)
+        self._tiles_vertical = max(1, tiles_vertical)
         self._spawn_pos = (self._half_tile, self._half_tile)
         self._pos = self._spawn_pos
         self._tail: Tail = deque()
         self._current_direction = DEFAULTS["direction"]
         self._autopilot_enabled = DEFAULTS["autopilot_enabled"]
         # Movement cadence state so framerate and speed can be tuned independently
-        self._move_delay = 150  # milliseconds between steps
+        self._move_delay = self._compute_move_delay()
         self._move_accumulator = 0
         self._pending_tail_owners: deque[bool] = deque()
 
@@ -153,3 +163,12 @@ class Player:
         snapped_x = ((clamped_x - offset) // step) * step + offset
         snapped_y = ((clamped_y - offset) // step) * step + offset
         return (snapped_x, snapped_y)
+
+    def _compute_move_delay(self) -> int:
+        base_delay = 150  # ms per step at the default 10x10 board
+        base_avg_tiles = 10.0
+        avg_tiles = max(
+            1.0, (self._tiles_horizontal + self._tiles_vertical) / 2.0)
+        scale = base_avg_tiles / avg_tiles
+        clamped_scale = max(0.30, min(2.0, scale))
+        return int(base_delay * clamped_scale)
