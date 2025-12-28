@@ -8,6 +8,8 @@ yaps: Yet Another Pygame-Snake.
 
 `$ python yaps.py`
 
+Defaults to autopilot enabled. Press `a` to toggle autopilot.
+
 ### Dependencies
 
 PyGame. See the [requirements file](./requirements.txt).
@@ -31,5 +33,3 @@ Override the defaults when launching the game:
 Example:
 
 `$ python yaps.py --tile-size 64 --tiles-horizontal 14 --tiles-vertical 12`
-
-```
