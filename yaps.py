@@ -79,12 +79,13 @@ class Game:
 
         if self.player.should_die():
             print("You died!")
-            self.loop = False
+            # self.loop = False
 
             # Make screen red and dramatic to indicate death
             self.surface.fill((255, 0, 0))
             pg.display.update()
             pg.time.delay(2000)
+            self._reset_state()
 
         # Fruit logic
         if self._current_fruit and self.player.get_pos() == self._current_fruit:
@@ -118,9 +119,7 @@ class Game:
                     self.player.toggle_autopilot()
                 elif event.key == K_SPACE:
                     print("Resetting player position and direction")
-                    self.player.set_pos(self.player.get_spawn_pos())
-                    self.player.set_direction(DEFAULTS["direction"])
-                    self.player.reset_tail()
+                    self._reset_state()
                 if (next_direction := KEY_TO_DIRECTION.get(event.key, None)) and direction_change_is_legal(self.player.get_direction(), next_direction):
                     print(
                         f"Setting direction to {get_key_from_value(DIRECTIONS, next_direction)}")
@@ -132,6 +131,12 @@ class Game:
         target = self._current_fruit or self.player.get_pos()
         self.player.update(delta_ms, target)
         pg.display.update()
+
+    def _reset_state(self) -> None:
+        self.player.set_pos(self.player.get_spawn_pos())
+        self.player.set_direction(DEFAULTS["direction"])
+        self.player.reset_tail()
+        self._current_fruit = None
 
     def _draw_grid_labels(self) -> None:
         """Render chess-like file/rank labels along the board edges."""
