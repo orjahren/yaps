@@ -4,11 +4,10 @@ import pygame as pg
 
 # pylint: disable=no-name-in-module
 # TODO: Hva skjer med lintingen?
-from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE,  K_SPACE
+from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE,  K_SPACE, K_a
 # pylint: enable=no-name-in-module
 
 from helpers import Coordinate, DEFAULTS, DIRECTIONS, KEY_TO_DIRECTION, direction_change_is_legal, get_key_from_value
-from npc import Npc
 from player import Player
 
 
@@ -18,8 +17,6 @@ TILES_VERTICAL = 10
 TILE_SIZE = 80
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 800
-
-USE_NPC = True
 
 
 class Game:
@@ -33,8 +30,7 @@ class Game:
         self.surface = pg.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.font = pg.font.Font(None, 24)
         self.loop = True
-        actor = Npc if USE_NPC else Player
-        self.player = actor(self.surface, WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.player = Player(self.surface, WINDOW_WIDTH, WINDOW_HEIGHT)
         self._current_fruit: Coordinate = None, None
 
         self._col_labels = [chr(ord('A') + i) for i in range(TILES_HORIZONTAL)]
@@ -92,6 +88,9 @@ class Game:
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     self.loop = False
+                elif event.key == K_a:
+                    print("Toggling autopilot")
+                    self.player.toggle_autopilot()
                 elif event.key == K_SPACE:
                     print("Resetting player position and direction")
                     self.player.set_pos((DEFAULTS["player_pos"]))

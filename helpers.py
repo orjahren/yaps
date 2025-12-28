@@ -21,6 +21,7 @@ KEY_TO_DIRECTION = {
 DEFAULTS = {
     "player_pos": (40, 40),
     "direction": DIRECTIONS["RIGHT"],
+    "autopilot_enabled": True,
 }
 
 

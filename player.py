@@ -1,5 +1,5 @@
 from pygame import Surface
-from helpers import DEFAULTS, Coordinate, Direction, Tail
+from helpers import DEFAULTS, DIRECTIONS, Coordinate, Direction, Tail, direction_change_is_legal, get_key_from_value
 
 
 class Player:
@@ -11,6 +11,7 @@ class Player:
         self._pos = DEFAULTS["player_pos"]
         self._tail: Tail = []
         self._current_direction = DEFAULTS["direction"]
+        self._autopilot_enabled = DEFAULTS["autopilot_enabled"]
         # Movement cadence state so framerate and speed can be tuned independently
         self._move_delay = 150  # milliseconds between steps
         self._move_accumulator = 0
@@ -57,13 +58,21 @@ class Player:
         self._pos = new_pos
 
     # TODO: Er dette måten å gjøre det på??
-    def update(self, delta_ms: int) -> None:
+    def update(self, delta_ms: int, fruit_coords: Coordinate) -> None:
         """Advance the player when enough time has elapsed."""
         self._move_accumulator += delta_ms
         if self._move_accumulator < self._move_delay:
             return
         # Preserve leftover time so slight jitter is averaged out
         self._move_accumulator %= self._move_delay
+
+        if self._autopilot_enabled:
+            next_direction = self._get_next_direction(fruit_coords)
+            if direction_change_is_legal(self.get_direction(), next_direction):
+                pretty_dir = get_key_from_value(DIRECTIONS, next_direction)
+                print(f"Autopilot changing direction to {pretty_dir}")
+                self.set_direction(next_direction)
+
         self.move()
 
     # TODO: Refactor grow logic
@@ -84,3 +93,27 @@ class Player:
 
     def get_tail(self) -> Tail:
         return self._tail
+
+    def toggle_autopilot(self, override: bool = None) -> None:  # type: ignore
+        if override is not None:
+            self._autopilot_enabled = override
+        else:
+            self._autopilot_enabled = not self._autopilot_enabled
+
+    def _get_next_direction(self, fruit_coords: Coordinate) -> Direction:
+
+        if fruit_coords:
+            fruit_x, fruit_y = fruit_coords
+            npc_x, npc_y = self.get_pos()
+
+            if fruit_x > npc_x:
+                return DIRECTIONS["RIGHT"]
+            elif fruit_x < npc_x:
+                return DIRECTIONS["LEFT"]
+            elif fruit_y > npc_y:
+                return DIRECTIONS["DOWN"]
+            elif fruit_y < npc_y:
+                return DIRECTIONS["UP"]
+
+            print("NPC is already at the fruit position.")
+            return self.get_direction()
