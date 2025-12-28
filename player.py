@@ -56,7 +56,7 @@ class Player:
         self._pos = new_pos
 
     # TODO: Er dette måten å gjøre det på??
-    def update(self, delta_ms):
+    def update(self, delta_ms, fruit_coords=None):
         """Advance the player when enough time has elapsed."""
         self._move_accumulator += delta_ms
         if self._move_accumulator < self._move_delay:

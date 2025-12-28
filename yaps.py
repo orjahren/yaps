@@ -6,7 +6,8 @@ import pygame as pg
 # TODO: Hva skjer med lintingen?
 from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE,  K_SPACE
 
-from helpers import DEFAULTS, DIRECTIONS, KEY_TO_DIRECTION, get_key_from_value, is_opposite_direction
+from helpers import DEFAULTS, DIRECTIONS, KEY_TO_DIRECTION, direction_change_is_legal, get_key_from_value, is_opposite_direction
+from npc import Npc
 from player import Player
 # pylint: enable=no-name-in-module
 
@@ -17,6 +18,8 @@ TILES_VERTICAL = 10
 TILE_SIZE = 80
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 800
+
+USE_NPC = True
 
 
 class Game:
@@ -30,7 +33,8 @@ class Game:
         self.surface = pg.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.font = pg.font.Font(None, 24)
         self.loop = True
-        self.player = Player(self.surface, WINDOW_WIDTH, WINDOW_HEIGHT)
+        actor = Npc if USE_NPC else Player
+        self.player = actor(self.surface, WINDOW_WIDTH, WINDOW_HEIGHT)
         self._current_fruit = None, None
         self._col_labels = [chr(ord('A') + i) for i in range(TILES_HORIZONTAL)]
         self._row_labels = [str(TILES_VERTICAL - i)
@@ -92,24 +96,15 @@ class Game:
                     self.player.set_pos((DEFAULTS["player_pos"]))
                     self.player.set_direction(DEFAULTS["direction"])
                     self.player.set_tail([])
-                if (next_direction := KEY_TO_DIRECTION.get(event.key, None)):
-                    pretty_next_dir = get_key_from_value(
-                        DIRECTIONS, next_direction)
-                    if is_opposite_direction(next_direction, self.player.get_direction()):
-                        print(
-                            f"Ignoring opposite direction {pretty_next_dir}")
-                    elif next_direction == self.player.get_direction():
-                        print(
-                            f"Ignoring same direction {pretty_next_dir}")
-                    else:
-                        print(
-                            f"Setting direction to {pretty_next_dir}")
-                        self.player.set_direction(next_direction)
+                if (next_direction := KEY_TO_DIRECTION.get(event.key, None)) and direction_change_is_legal(self.player.get_direction(), next_direction):
+                    print(
+                        f"Setting direction to {get_key_from_value(DIRECTIONS, next_direction)}")
+                    self.player.set_direction(next_direction)
             elif event.type == MOUSEBUTTONDOWN:
                 pos = pg.mouse.get_pos()
                 self.player.set_pos(pos)
                 self.player.set_tail([])
-        self.player.update(delta_ms)
+        self.player.update(delta_ms, self._current_fruit)
         pg.display.update()
 
     def _draw_grid_labels(self):

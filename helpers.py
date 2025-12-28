@@ -33,3 +33,17 @@ def get_key_from_value(dic, value):
 
 def is_opposite_direction(dir1, dir2):
     return dir1[0] == -dir2[0] and dir1[1] == -dir2[1]
+
+
+def direction_change_is_legal(old_direction, next_direction):
+    pretty_next_dir = get_key_from_value(DIRECTIONS, next_direction)
+
+    if is_opposite_direction(old_direction, next_direction):
+        print(f"Ignoring opposite direction {pretty_next_dir}")
+        return False
+
+    if old_direction == next_direction:
+        print(f"Ignoring same direction {pretty_next_dir}")
+        return False
+
+    return True
