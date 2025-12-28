@@ -1,14 +1,15 @@
-from helpers import DEFAULTS
+from pygame import Surface
+from helpers import DEFAULTS, Coordinate, Direction, Tail
 
 
 class Player:
 
-    def __init__(self, surface, width, height):
-        self.surface = surface
+    def __init__(self, surface: Surface, width: int, height: int):
+        self.surface: Surface = surface
         self.width = width
         self.height = height
         self._pos = DEFAULTS["player_pos"]
-        self._tail = []
+        self._tail: Tail = []
         self._current_direction = DEFAULTS["direction"]
         # Movement cadence state so framerate and speed can be tuned independently
         self._move_delay = 150  # milliseconds between steps
@@ -17,7 +18,7 @@ class Player:
         # TODO: Wack hack...
         self._should_eat = False
 
-    def set_pos(self, target):
+    def set_pos(self, target: Coordinate) -> None:
         self._pos = target
         if self._tail:
             self._tail = [self._pos] + self._tail[:-1]
@@ -25,7 +26,7 @@ class Player:
     def get_pos(self):
         return self._pos
 
-    def get_next_pos(self, old_pos):
+    def get_next_pos(self, old_pos: Coordinate) -> Coordinate:
         old_x, old_y = old_pos
         new_x = (80 * (old_x // 80)) + 40 + \
             self._current_direction[0] * 80
@@ -45,7 +46,7 @@ class Player:
 
         return (new_x, new_y)
 
-    def move(self):
+    def move(self) -> None:
         prev_pos = self._pos
         new_pos = self.get_next_pos(prev_pos)
         if self._should_eat:
@@ -56,7 +57,7 @@ class Player:
         self._pos = new_pos
 
     # TODO: Er dette måten å gjøre det på??
-    def update(self, delta_ms, fruit_coords=None):
+    def update(self, delta_ms: int) -> None:
         """Advance the player when enough time has elapsed."""
         self._move_accumulator += delta_ms
         if self._move_accumulator < self._move_delay:
@@ -66,20 +67,20 @@ class Player:
         self.move()
 
     # TODO: Refactor grow logic
-    def grow(self):
+    def grow(self) -> None:
         self._should_eat = True
 
-    def should_die(self):
+    def should_die(self) -> bool:
         return self._pos in self._tail
 
-    def set_direction(self, direction):
+    def set_direction(self, direction: Direction) -> None:
         self._current_direction = direction
 
-    def get_direction(self):
+    def get_direction(self) -> Direction:
         return self._current_direction
 
-    def set_tail(self, tail):
+    def set_tail(self, tail: Tail) -> None:
         self._tail = tail
 
-    def get_tail(self):
+    def get_tail(self) -> Tail:
         return self._tail

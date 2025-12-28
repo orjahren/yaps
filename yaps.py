@@ -5,11 +5,11 @@ import pygame as pg
 # pylint: disable=no-name-in-module
 # TODO: Hva skjer med lintingen?
 from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE,  K_SPACE
+# pylint: enable=no-name-in-module
 
-from helpers import DEFAULTS, DIRECTIONS, KEY_TO_DIRECTION, direction_change_is_legal, get_key_from_value, is_opposite_direction
+from helpers import Coordinate, DEFAULTS, DIRECTIONS, KEY_TO_DIRECTION, direction_change_is_legal, get_key_from_value
 from npc import Npc
 from player import Player
-# pylint: enable=no-name-in-module
 
 
 TITLE = "YAPS - Yet Another PyGame Snake"
@@ -35,12 +35,13 @@ class Game:
         self.loop = True
         actor = Npc if USE_NPC else Player
         self.player = actor(self.surface, WINDOW_WIDTH, WINDOW_HEIGHT)
-        self._current_fruit = None, None
+        self._current_fruit: Coordinate = None, None
+
         self._col_labels = [chr(ord('A') + i) for i in range(TILES_HORIZONTAL)]
         self._row_labels = [str(TILES_VERTICAL - i)
                             for i in range(TILES_VERTICAL)]
 
-    def main(self):
+    def main(self) -> None:
         while self.loop:
             self.grid_loop()
         # pylint: disable=no-member
@@ -48,7 +49,7 @@ class Game:
         pg.quit()
         # pylint: enable=no-member
 
-    def grid_loop(self):
+    def grid_loop(self) -> None:
         delta_ms = self.clock.tick(120)
 
         self.surface.fill((0, 0, 0))
@@ -107,7 +108,7 @@ class Game:
         self.player.update(delta_ms, self._current_fruit)
         pg.display.update()
 
-    def _draw_grid_labels(self):
+    def _draw_grid_labels(self) -> None:
         """Render chess-like file/rank labels along the board edges."""
         label_color = (160, 160, 160)
         for idx, letter in enumerate(self._col_labels):
@@ -126,7 +127,7 @@ class Game:
             self.surface.blit(right_text, right_text.get_rect(
                 center=(WINDOW_WIDTH - 12, y)))
 
-    def _draw_player(self, player):
+    def _draw_player(self, player: Player) -> None:
         # Draw tail
         for segment in player.get_tail():
             pg.draw.circle(self.surface, (200, 200, 200), segment, 20)

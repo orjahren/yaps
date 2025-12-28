@@ -1,13 +1,9 @@
 from player import Player
-
-from helpers import DIRECTIONS, direction_change_is_legal, get_key_from_value
+from helpers import DIRECTIONS, direction_change_is_legal, get_key_from_value, Coordinate, Direction
 
 
 class Npc(Player):
-    def __init__(self, surface, width, height):
-        super().__init__(surface, width, height)
-
-    def _get_next_direction(self, fruit_coords):
+    def _get_next_direction(self, fruit_coords: Coordinate) -> Direction:
 
         if fruit_coords:
             fruit_x, fruit_y = fruit_coords
@@ -22,8 +18,13 @@ class Npc(Player):
             elif fruit_y < npc_y:
                 return DIRECTIONS["UP"]
 
+            print("NPC is already at the fruit position.")
+            return self.get_direction()
+
    # NOTE: Overriding Player's update method to implement NPC movement logic
-    def update(self, delta_ms, fruit_coords=None):
+   # TODO: Denne burde i større grad synkroniseres med super sin update-metode.
+   # Mye overlapp her.
+    def update(self, delta_ms: int, fruit_coords: Coordinate = None) -> None:
         """Advance the player when enough time has elapsed."""
         self._move_accumulator += delta_ms
         if self._move_accumulator < self._move_delay:
