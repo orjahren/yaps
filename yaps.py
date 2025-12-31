@@ -12,6 +12,7 @@ from pygame.constants import MOUSEBUTTONDOWN, QUIT, KEYDOWN, K_ESCAPE,  K_SPACE,
 
 from helpers import Coordinate, DEFAULTS, DIRECTIONS, KEY_TO_DIRECTION, direction_change_is_legal, get_key_from_value
 from player import Player
+from ml_autopilot import MLAutopilot
 
 
 TITLE = "YAPS - Yet Another PyGame Snake"
@@ -21,7 +22,14 @@ DEFAULT_TILE_SIZE = 80
 
 
 class Game:
-    def __init__(self, tile_size: int, tiles_horizontal: int, tiles_vertical: int):
+    def __init__(
+        self,
+        tile_size: int,
+        tiles_horizontal: int,
+        tiles_vertical: int,
+        ml_model_path: Optional[str] = None,
+        ml_hidden_size: int = 256,
+    ):
         # pylint: disable=no-member
         # TODO: Hva skjer med lintingen?
         pg.init()
@@ -37,6 +45,10 @@ class Game:
             (self.window_width, self.window_height))
         self.font = pg.font.Font(None, 24)
         self.loop = True
+        self._ml_brain: Optional["MLAutopilot"] = self._load_ml_brain(
+            ml_model_path, ml_hidden_size
+        )
+
         self.player = Player(
             self.surface,
             self.window_width,
@@ -44,6 +56,7 @@ class Game:
             self.tile_size,
             self.tiles_horizontal,
             self.tiles_vertical,
+            ml_brain=self._ml_brain,
         )
         self._current_fruit: Optional[Coordinate] = None
 
@@ -128,9 +141,29 @@ class Game:
                 pos = pg.mouse.get_pos()
                 self.player.set_pos(pos)
                 self.player.reset_tail()
-        target = self._current_fruit or self.player.get_pos()
-        self.player.update(delta_ms, target)
+        self.player.update(delta_ms, self._current_fruit)
         pg.display.update()
+
+    def _load_ml_brain(
+        self, model_path: Optional[str], hidden_size: int
+    ) -> Optional["MLAutopilot"]:
+        if not model_path:
+            return None
+        try:
+            from ml_autopilot import MLAutopilot
+
+            brain = MLAutopilot(
+                model_path=model_path,
+                cols=self.tiles_horizontal,
+                rows=self.tiles_vertical,
+                tile_size=self.tile_size,
+                hidden_size=hidden_size,
+            )
+            print(f"Loaded ML autopilot from {model_path}")
+            return brain
+        except Exception as exc:  # pragma: no cover - defensive logging
+            print(f"Failed to initialize ML autopilot: {exc}")
+            return None
 
     def _reset_state(self) -> None:
         self.player.set_pos(self.player.get_spawn_pos())
@@ -191,6 +224,18 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_TILES_VERTICAL,
         help="Number of tiles along the Y axis (default: 10).",
     )
+    parser.add_argument(
+        "--ml-model",
+        type=str,
+        default=None,
+        help="Path to a trained DQN checkpoint for the autopilot.",
+    )
+    parser.add_argument(
+        "--ml-hidden-size",
+        type=int,
+        default=256,
+        help="Hidden layer width that was used during training.",
+    )
     return parser.parse_args()
 
 
@@ -200,5 +245,7 @@ if __name__ == "__main__":
         tile_size=args.tile_size,
         tiles_horizontal=args.tiles_horizontal,
         tiles_vertical=args.tiles_vertical,
+        ml_model_path=args.ml_model,
+        ml_hidden_size=args.ml_hidden_size,
     )
     mygame.main()

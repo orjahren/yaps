@@ -4,6 +4,7 @@ from typing import Optional
 from pygame import Surface
 from algorithms import compute_autopilot_direction
 from helpers import DEFAULTS, DIRECTIONS, Coordinate, Direction, Tail, direction_change_is_legal, get_key_from_value
+from ml_autopilot import MLAutopilot
 
 
 class Player:
@@ -16,6 +17,7 @@ class Player:
         tile_size: int,
         tiles_horizontal: int,
         tiles_vertical: int,
+        ml_brain: Optional["MLAutopilot"] = None,
     ):
         self.surface: Surface = surface
         self.width = width
@@ -34,6 +36,7 @@ class Player:
         self._move_accumulator = 0
         self._pending_tail_owners: deque[bool] = deque()
         self._hit_wall = False
+        self._ml_brain: Optional["MLAutopilot"] = ml_brain
 
     def set_pos(self, target: Coordinate) -> None:
         snapped_target = self._snap_to_grid(target)
@@ -76,7 +79,7 @@ class Player:
         self._pos = new_pos
 
     # TODO: Er dette måten å gjøre det på??
-    def update(self, delta_ms: int, fruit_coords: Coordinate) -> None:
+    def update(self, delta_ms: int, fruit_coords: Optional[Coordinate]) -> None:
         """Advance the player when enough time has elapsed."""
         if self._hit_wall:
             return
@@ -129,21 +132,36 @@ class Player:
     def get_spawn_pos(self) -> Coordinate:
         return self._spawn_pos
 
-    def _get_next_direction(self, fruit_coords: Coordinate) -> Direction:
-        next_direction = compute_autopilot_direction(
-            head=self.get_pos(),
-            fruit=fruit_coords,
-            tail=self._tail,
-            tile_size=self._tile_size,
-            cols=self._tiles_horizontal,
-            rows=self._tiles_vertical,
-        )
+    def _get_next_direction(self, fruit_coords: Optional[Coordinate]) -> Direction:
+        preferred: Optional[Direction] = None
+        if self._ml_brain is not None:
+            try:
+                preferred = self._ml_brain.suggest_direction(
+                    head=self.get_pos(),
+                    fruit=fruit_coords,
+                    direction=self.get_direction(),
+                    tail=self._tail,
+                    pending_growth=bool(self._pending_tail_owners),
+                )
+            except Exception as exc:  # pragma: no cover - defensive logging
+                print(f"ML autopilot disabled due to error: {exc}")
+                self._ml_brain = None
 
-        safe_direction = self._avoid_tail(next_direction)
+        if preferred is None:
+            preferred = compute_autopilot_direction(
+                head=self.get_pos(),
+                fruit=fruit_coords,
+                tail=self._tail,
+                tile_size=self._tile_size,
+                cols=self._tiles_horizontal,
+                rows=self._tiles_vertical,
+            )
 
-        if next_direction is None:
+        safe_direction = self._avoid_tail(preferred)
+
+        if preferred is None:
             print("Autopilot keeping direction; no better path found.")
-        elif safe_direction != next_direction:
+        elif safe_direction != preferred:
             print("Autopilot adjusted to avoid tail collision.")
 
         return safe_direction
